@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from matplotlib import cm
 import random
-matplotlib notebook
 
 
 #definindo uma formula geral para um robo RRR (3 juntas)
