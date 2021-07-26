@@ -9,6 +9,7 @@ import time
 import random
 import RobotUtils
 import copy
+from threading import Thread
 
 MAX_a = 10
 MAX_d = 10
@@ -117,7 +118,7 @@ class AG3Int:
         self.exp_decay=exp_decay
         self.step=step
 
-        self.create_new_individuals(ini0tial_pos=Juntas_init)
+        self.create_new_individuals(initial_pos=Juntas_init)
 
     def dist(self, P):
         return np.abs(np.sqrt((P[0] - self.P0[0]) ** 2 + (P[1] - self.P0[1]) ** 2 + (P[2] - self.P0[2]) ** 2))
@@ -168,11 +169,12 @@ class AG3Int:
         except:
             best_idx_bef = -1  # invalido, para mostrar que nao havia sido calculado o best_individual ainda
 
-        self.best_idx = self.individuals.index(min(self.individuals, key=lambda x: x['score']))
-        self.best_score = self.individuals[self.best_idx]
+        # self.best_idx = self.individuals.index(min(self.individuals, key=lambda x: x['score']))
+        # self.best_score = self.individuals[self.best_idx]['score']
 
-        # temp_list = list(map(lambda x:x['score'],self.individuals))        
-        # self.best_idx = temp_list.index(min(temp_list))
+        temp_list = list(map(lambda x:x['score'],self.individuals))        
+        self.best_idx = temp_list.index(min(temp_list))
+        self.best_score = min(temp_list)
 
 
         # self.best_score = 1e9
@@ -291,14 +293,16 @@ class AG3Int:
                     if (random.random() <= self.mut_rate):
                         for gen_idx in range(len(self.individuals[cr_idx]['cr'])):
                             # self.individuals[cr_idx]['cr'][gen_idx] += float(np.random.normal(loc=0, scale=0.5)*self.individuals[cr_idx]['cr'][gen_idx])
-                            
-                            self.individuals[cr_idx]['cr'][gen_idx] += self.mut_mag*self.exp_decay**int(self.num_without_imp/self.step)
+                            mut_type = (-1)**np.random.randint(2)
+                            self.individuals[cr_idx]['cr'][gen_idx] += mut_type*self.mut_mag*self.exp_decay**int(self.num_without_imp/self.step)
 
     def kill_worst_elems(self):
         self.individuals.sort(key=lambda x: x['score'])
+        self.best_idx = 0
+        self.best_score = self.individuals[0]['score']
         to_kill = int(self.num_crs * self.to_kill_perc)
         del self.individuals[-1:-(1 + to_kill):-1]
-        self.create_new_individuals(num_elems=to_kill, initial_pos=self.individuals[self.best_idx])
+        self.create_new_individuals(num_elems=to_kill, initial_pos=self.individuals[0])
 
     def save_q_gif(self, gen,best_perc=1):
         self.individuals.sort(key=lambda x: x['score'])
@@ -318,18 +322,18 @@ class AG3Int:
         for gen in range(num_iters):
             self.evaluate_all()
             self.get_best_individual()  # retorna o indice do melhor de todos em self.best_idx
-            if self.best_score < CONV_threshold:
-                break
             self.get_mean()  # retorna a media em self.mean
             self.best_score_list.append(self.best_score)
             self.mean_list.append(self.mean)
+            if self.best_score < CONV_threshold:
+                break
             # self.save_q_gif(gen)
             # self.save_best_q_gif()
             self.selection()
             if (self.mut_rate_dict != None):
                 self.change_mutation_rate()
             self.mutation()
-            self.kill_worst_elems()
+            # self.kill_worst_elems()
             # print(self.num_without_imp,self.mut_rate)
 
     def plot_q_gif(self,cmap):
@@ -611,7 +615,7 @@ class AG2continuous:
     
     cromossome = {n of individuals, mut rate, to kill perc, ut_mag, exp_decay, step}
     """
-    def __init__(self, num_crs, robot, boolJuntas, Pinit, P0, sel_tech, co_tech):
+    def __init__(self, num_crs, robot, boolJuntas, Pinit, P0, sel_tech, co_tech, mut_mag, mut_rate, initial_cr=None):
 
         self.robot_arch = robot
         self.boolJuntas = boolJuntas
@@ -626,42 +630,46 @@ class AG2continuous:
 
         self.individuals = []
 
+        self.num_without_imp = 0
 
-        self.create_new_individuals()
+        self.mut_rate = mut_rate
+        self.mut_mag = mut_mag
 
-        for mut_rate in mut_rate_list:
-            num_iters=1000 #numero de iteracoes
-            num_inds=10 #numero de individuos
-            sel_tech='T4' # 'EL' or 'TN' OBS: so acompanha a media de forma rigida se for elitimos (isso ja era esperado)
-            co_tech='AVG' # 'AVG' or 'BST' or 'RAN'
-            #mut_rate={0:1,5:2,10:3,15:4,50:5,100:10,200:20}
-            #mut_rate=0.05
-            ag3_int = AG3Int(num_inds,robot,boolJuntas,juntas_init,P1,mut_rate,co_tech,sel_tech,0)
-            ag3_int.run(num_iters)
+        self.best_score_par = []
+
+        self.initial_cr = initial_cr
 
 
-    def create_new_individuals(self):
+        self.create_new_individuals(initial_cr=initial_cr)
+
+
+    def create_new_individuals(self, initial_cr=None):
         """
         cromossome = {int, int, int}
                  {n of individuals, mut rate, to kill perc, ut_mag, exp_decay, step}
         """
-        for i in range(self):
-            cromossome = np.random.uniform(size=6)
-            self.individuals.append({'cr': cromossome})
-            self.individuals[-1]['ind'] = self.generate_individual(cromossome)
+        if initial_cr == None:
+            for i in range(self.num_crs):
+                cromossome = np.random.uniform(size=6)
+                self.individuals.append({'cr': cromossome})
+                self.individuals[-1]['ind'] = self.generate_individual(cromossome)
+        else:
+            for i in range(self.num_crs):
+                self.individuals.append({'cr': initial_cr})
+                self.individuals[-1]['ind'] = self.generate_individual(initial_cr)
 
     def generate_individual(self, cromossome):
-        num_ind = int(cromossome[0]*49)+1  # [1,50]
-        mut_rate = cromossome[1]  # [0,1]
+        num_ind = int(cromossome[0]*47)+3  # [3,50]
+        mut_rate = cromossome[1]*0.5 + 0.5  # [0.5, 1]
         to_kill_perc = cromossome[2]  # [0,1]
-        mut_mag = cromossome[3]*2   # [0,2] 
+        mut_mag = cromossome[3]*2+0.001   # [0.001,2] 
         exp_decay = cromossome[4]   #  [0, 1]
         step = int(cromossome[5]*99)+1   # [1, 100]
         return AG3Int(num_ind, self.robot_arch, self.boolJuntas, self.initial_pos, self.P0, mut_rate, self.co_tech,
                         self.sel_tech, to_kill_perc, mut_mag=mut_mag, exp_decay=exp_decay, step=step)
     def refresh_individuals(self, not_chaged_list=[]):
-        for ind in self.individuals:
-            idx= self.individuals.index(ind)
+        for idx in range(self.num_crs):
+            ind = self.individuals[idx]
             if idx == self.best_idx or idx in not_chaged_list:
                 continue
             ind['ind'] = self.generate_individual(ind['cr'])
@@ -681,7 +689,7 @@ class AG2continuous:
 
         """
         score= 0
-
+        print('avalia')
         t0 = time.time()
         ind['ind'].run(500)
         t1 = time.time()
@@ -691,20 +699,66 @@ class AG2continuous:
         enlapsed_time = t1-t0
 
         if last_point_distance <= CONV_threshold:
-            score += 0.2
+            score_conv = 10
         else:
-            score += 0.2*(CONV_threshold/last_point_distance)
-            score += min((limite-iteracoes)/450, 1)*0.2
+            score_conv = 10*(CONV_threshold/last_point_distance)
+        
+        score += score_conv 
 
-        score += 0.01*(1.27e-3 - enlapsed_time/iterations)/1.27e-5
+        score_it = min((500-iterations)/450, 1)*5
+        score += score_it
 
-        score += 0.4*CONV_threshold*4/np.var(points_distances)        
+        # score += 0.01*(1.27e-3 - enlapsed_time/iterations)/1.27e-5
+        
+        score_time = 2*min((2e-3 - enlapsed_time/iterations)/2e-3, 1)
+        score += score_time
 
-        self.ind['score'] = score
+        mean_window_var = 0
+
+        for i in range(0, iterations*ind['ind'].num_crs, ind['ind'].num_crs):
+            mean_window_var += np.var(ind['ind'].history_points[i:i+ind['ind'].num_crs])
+
+        mean_window_var = mean_window_var/iterations
+
+        score_var = 0
+        if mean_window_var < CONV_threshold:
+            score_var = mean_window_var*1/CONV_threshold
+        elif mean_window_var < 0.5:
+            score_var = 1 
+        elif mean_window_var > 0.5 and mean_window_var < 1:
+            score_var = 2 - 2*mean_window_var
+        else:
+            score_var = 0
+
+        score += 15*score_var
+
+        # var_score = mean_window_var - 0.5*(1*0.25/CONV_threshold)*mean_window_var**2 +1 # mantem a variancia baixa, mas alguma variancia
+        #                                                                              # eh desejada
+
+        # score += 0.4*max(var_score, 0)        
+
+        ind['score'] = score
+
+        ind['parameters'] = (score_var, score_conv, score_it, score_time)
 
     def evaluate_all(self):
+        # processes = {}
+        # for idx in range(self.num_crs):
+        #     processes[idx] = Thread(target=self.evaluate_one, args=(self.individuals[idx],))
+        #     processes[idx].daemon = True
+        #     processes[idx].start()
+
+        # while True:
+        #     alives = [1 if processes[t].is_alive() else 0 for t in processes]
+        #     if not sum(alives):
+        #         break
+
         for ind in self.individuals:
             self.evaluate_one(ind)
+
+    def get_mean(self):
+        self.mean = np.mean(list(map(lambda x: x['cr'], self.individuals)))
+
 
     def get_best_individual(self):
         try:
@@ -712,11 +766,23 @@ class AG2continuous:
         except:
             best_idx_bef = -1  # invalido, para mostrar que nao havia sido calculado o best_individual ainda
 
-        self.best_idx = self.individuals.index(min(self.individuals, key=lambda x: x['score']))
-        self.best_score = self.individuals[self.best_idx]
+        # self.best_idx = self.individuals.index(max(self.individuals, key=lambda x: x['score']))
+        # self.best_score = self.individuals[self.best_idx]
 
-        # temp_list = list(map(lambda x:x['score'],self.individuals))        
-        # self.best_idx = temp_list.index(min(temp_list))
+        temp_list = list(map(lambda x:x['score'],self.individuals))
+        print('-----------------------')
+        print(self.initial_cr)
+        print('_______________________')
+        for i in range(self.num_crs):
+            print(self.individuals[i]['cr'])
+            print(temp_list[i])
+            print('\n')
+        self.best_idx = temp_list.index(max(temp_list))
+        print(self.individuals[self.best_idx]['parameters'])
+        print(self.best_idx)
+        self.best_score = max(temp_list)
+
+        self.best_score_par.append(self.individuals[self.best_idx]['parameters'])
 
         if (self.best_idx != best_idx_bef):
             self.num_without_imp = 0
@@ -728,15 +794,32 @@ class AG2continuous:
         cr2 = list(self.individuals[ind_idx2]['cr'])
         
         new_ind = [(weight1 * cr1[cr_idx] + (1 - weight1) * cr2[cr_idx]) for cr_idx in range(len(cr1))]
-        if (self.individuals[ind_idx1]['score'] > self.individuals[ind_idx2]['score']):
-            self.individuals[ind_idx1]['cr'] = np.array(new_ind)
-        else:
-            self.individuals[ind_idx2]['cr'] = np.array(new_ind)
+        # if (self.individuals[ind_idx1]['score'] > self.individuals[ind_idx2]['score']):
+        #     self.individuals[ind_idx1]['cr'] = np.array(new_ind)
+        # else:
+        self.individuals[ind_idx2]['cr'] = np.array(new_ind)
 
     def selection(self):
         for cr_idx in range(self.num_crs):
+        # if True:
             if (cr_idx != self.best_idx):  # nao sei se tem algum jeito mais esperto do que testar todos
                 self.crossover(self.best_idx, cr_idx, 0.75)  # 75% de peso para o melhor de todos
+
+            # N = int(2)  # tournament of N
+            # idx_list = random.sample(range(self.num_crs), 2 * N)  # parents at random
+            # best_sol = -100
+            # for idx in idx_list[0:N]:
+            #     if (self.individuals[idx]['score'] > best_sol):
+            #         par1 = idx
+            #         best_sol = self.individuals[par1]['score'] 
+
+            # best_sol = -100
+            # for idx in idx_list[N:]:
+            #     if (self.individuals[idx]['score'] > best_sol):
+            #         par2 = idx
+            #         best_sol = self.individuals[par2]['score']
+
+            # self.crossover(par1, par2, 0.5)
 
     def mutation(self):
         if (self.mut_rate):
@@ -745,15 +828,30 @@ class AG2continuous:
                     if (random.random() <= self.mut_rate):
                         for gen_idx in range(len(self.individuals[cr_idx]['cr'])):
                             # self.individuals[cr_idx]['cr'][gen_idx] += float(np.random.normal(loc=0, scale=0.5)*self.individuals[cr_idx]['cr'][gen_idx])
-                            self.individuals[cr_idx]['cr'][gen_idx] += self.mut_mag*self.exp_decay**int(self.num_without_imp/self.step)
+                            
+                            mut_type = (-1)**np.random.randint(2)
+                            mutation_mag = self.mut_mag*self.individuals[cr_idx]['cr'][gen_idx]
+                            
+                            if self.num_without_imp>2 and self.num_without_imp<5:
+                                mutation_mag = mutation_mag/2
+                            if self.num_without_imp>5:
+                                mutation_mag = mutation_mag*(self.num_without_imp/5)**2    
+                            
+                            self.individuals[cr_idx]['cr'][gen_idx] += mut_type*mutation_mag
+                            
+                            if self.individuals[cr_idx]['cr'][gen_idx] >1:
+                                self.individuals[cr_idx]['cr'][gen_idx] = 1
+                            elif self.individuals[cr_idx]['cr'][gen_idx] <0:
+                                self.individuals[cr_idx]['cr'][gen_idx] = 0
 
     def kill_worst_elems(self):
         pass
 
-    def run(self):
+    def run(self, num_iters):
         self.best_score_list = []
         self.mean_list = []
         for gen in range(num_iters):
+            print("Generation: %i/%i"%(gen, num_iters))
             self.evaluate_all()
             self.get_best_individual()  # retorna o indice do melhor de todos em self.best_idx
             self.get_mean()  # retorna a media em self.mean
@@ -765,4 +863,128 @@ class AG2continuous:
 
 
 if __name__ == "__main__":
-    pass
+    print('Begin')
+    # construct_cr = np.random.randint(2, size=(57,), dtype=bool)
+    # [robot,boolJuntas] = birth_robot(construct_cr)
+    
+    boolJuntas = [False,False,False]
+    const_list = [5,5,5]
+    a_list = [1,1,1]
+    alpha_list = [0,np.pi/2,0]
+    robot = robot_build_funcs['RRR']('', const_list, a_list, alpha_list)
+
+    # move_cr=np.random.randint(2, size=(24,), dtype=bool)
+    print('Built random robot')
+
+    # H=move_robot(robot,move_cr,boolJuntas)
+    H = robot.fkine([4,3,4])
+    P1=point_H(H) 
+    print('Got initial pos')
+
+    #posicao inicial das juntas (seria o ponto anterior da trajetoria)
+    juntas_init=[1,2,1]
+
+    sel_tech='EL' # 'EL' or 'TN' OBS: so acompanha a media de forma rigida se for elitimos (isso ja era esperado)
+    co_tech='AVG' # 'AVG' or 'BST' or 'RAN'
+
+    # ag3 = AG3Int(10, robot, boolJuntas, juntas_init, P1, 0.75, co_tech,
+    #                     sel_tech, 0, mut_mag=0.01, exp_decay=0.5, step=10)
+    # ag3.run(1000)
+    # plt.plot(ag3.mean_list)
+    # plt.plot(ag3.best_score_list)
+    # plt.figure()
+
+    # ag3 = AG3Int(10, robot, boolJuntas, juntas_init, P1, 0.75, co_tech,
+    #                     sel_tech, 0, mut_mag=0.01, exp_decay=0.75, step=30)
+    # ag3.run(1000)
+    # plt.plot(ag3.mean_list)
+    # plt.plot(ag3.best_score_list)
+    # plt.show()
+
+    # ind = AG3Int(10, robot, boolJuntas, juntas_init, P1, 0.75, co_tech,
+    #                     sel_tech, 0, mut_mag=0.01, exp_decay=0.75, step=30)
+    # if True:
+    #     t0 = time.time()
+    #     ind.run(1000)
+    #     t1 = time.time()
+
+    #     iterations = len(ind.best_score_list)
+    #     last_point_distance = ind.best_score_list[-1]
+    #     enlapsed_time = t1-t0
+    #     score = 0
+    #     if last_point_distance <= CONV_threshold:
+    #         score += 0.2
+    #     else:
+    #         score += 0.2*(CONV_threshold/last_point_distance)
+        
+    #     score += min((500-iterations)/450, 1)*0.2
+
+    #     score += 0.01*(1.27e-3 - enlapsed_time/iterations)/1.27e-5
+
+    #     mean_window_var = 0
+
+    #     for i in range(0, iterations*ind.num_crs, ind.num_crs):
+    #         mean_window_var += np.var(ind.history_points[i:i+ind.num_crs])
+
+    #     mean_window_var = mean_window_var/iterations
+
+    #     var_score = mean_window_var - 0.5*(1*0.25/CONV_threshold)*mean_window_var**2 +1 # mantem a variancia baixa, mas alguma variancia
+    #                                                                                  # eh desejada
+
+    #     score += 0.4*var_score        
+
+    #     print('score: ') 
+    #     print(score)
+
+    #     print('params:') 
+    #     print(iterations, mean_window_var, last_point_distance)
+
+
+    ag3 = AG3Int(23, robot, boolJuntas, juntas_init, P1, 0.692211365, co_tech,
+                        sel_tech, 0.51855007, mut_mag=1.3602092799999999, exp_decay=0.61136335, step=38)
+    ag3.run(1000)
+    plt.plot(ag3.mean_list)
+    plt.plot(ag3.best_score_list)
+    plt.show()
+
+    # best_cr = [0.29650402 0.32962143 0.58263486 0.24963118 0.51500118 0.43384404]
+    
+    cr_15 = [0.51057169, 0.38442273, 0.51855007, 0.67960464, 0.61136335, 0.68145984]
+    # 26 0.692211365 0.51855007 1.3602092799999999 0.61136335 68
+
+    oto_15 = [0.46290208, 0.51460497, 0.,         0.58852252, 1.,         1.,        ]
+    # 23 0.7573024850000001 0.0 1.17804504 1.0 100
+
+    num_ind = int(oto_15[0]*49)+1  # [1,50]
+    mut_rate = oto_15[1]*0.5 + 0.5  # [0.5, 1]
+    to_kill_perc = oto_15[2]  # [0,1]
+    mut_mag = oto_15[3]*2+0.001   # [0.001,2] 
+    exp_decay = oto_15[4]   #  [0, 1]
+    step = int(oto_15[5]*99)+1   # [1, 100]
+
+    print(num_ind, mut_rate, to_kill_perc, mut_mag, exp_decay, step)
+
+    cromossome = [d for d in range(6)]
+    cromossome[0] = 0.1837
+    cromossome[1] = 0.5
+    cromossome[2] = 0
+    cromossome[3] = 0.0045
+    cromossome[4] = 0.75
+    cromossome[5] = 0.29
+
+    ag2 = AG2continuous(5,robot,boolJuntas,juntas_init,P1,co_tech,sel_tech,0.01, 0.8)#, initial_cr=cromossome)
+    print('Initialized AG2, running...')
+    t1= time.time()
+    ag2.run(250)
+    print(time.time()-t1)
+    print(ag2.individuals[ag2.best_idx])
+    print('-------')
+    for i in ag2.best_score_par:
+        print(i)
+    print('-------')
+    plt.plot(ag2.mean_list)
+    plt.plot(ag2.best_score_list)
+    plt.show()
+
+# [0.13388942, 0.3928416 , 0.04555333, 0.05642793, 0.32345981, 0.02447624]
+
