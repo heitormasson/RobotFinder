@@ -82,7 +82,7 @@ Parte do Heitor
     * Por se tratar de um problema puramente matemático
     * Saída: Trajetória ideal para o robô em questão
 
-#Fluxograma 
+# Fluxograma 
 
 Um fluxograma simplificado da influência de cada AG no sistema final é mostrado abaixo. Temos o AG1 em tom vermelho; AG2 em tom laranja e AG3 em tom azul.
 
