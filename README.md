@@ -4,7 +4,7 @@ de parâmetros (de construção e de movimentação) para um robô manipulador d
 
 O vídeo final explicando os algoritmos pode ser encontrado [neste link](https://drive.google.com/drive/folders/19RxmS9Z0M7JJ0cQoU_XLDASArwka2ASw?usp=sharing)
 
-# Integrantes
+# Autores
 
 Henrique de Oliveira Caetano - henriquecaetano1@usp.br
 
