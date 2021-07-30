@@ -4,7 +4,14 @@ de parâmetros (de construção e de movimentação) para um robô manipulador d
 
 O vídeo final explicando os algoritmos pode ser encontrado [neste link](https://drive.google.com/drive/folders/19RxmS9Z0M7JJ0cQoU_XLDASArwka2ASw?usp=sharing)
 
-#Um pouco de teoria
+# Descrição dos arquivos
+* AG1.ipynb: Jupyter notebook testando e rodando o AG1 (e verificando sua convergência)
+* AGS.py: Código principal roda o AG2 para otimizar o AG3, e implementa o AG1 e o AG3 (para serem importados em outros projetos)
+* RobotUtils.py: Utiliza a biblioteca roboticstoolbox para criar funções de construção e manipulação de robôs
+* ag3_test.ipynb: Testar o ag3 para cada ponto da trajetória, utilizando o robô otimizado pelo AG1, bem como os parâmetros otimizados pelo AG2
+* tutorial_roboticstoolbox.ipynb: Breve tutorial a respeito da biblioteca utilizada neste projeto 
+
+# Um pouco de teoria
 
 Um robô manipulador tem como principais características:
 * Utilizado para manipular materiais sem contato direto do operador
