@@ -2,6 +2,8 @@
 O presente projeto foi criado como projeto final da disciplina SSC0712 - Sistemas Evolutivos Aplicados à Robótica, e tem por objetivo encontrar um conjunto
 de parâmetros (de construção e de movimentação) para um robô manipulador de 3 juntas, que tem por objetivo seguir uma trajetória de pontos previamente determinada.
 
+O vídeo final explicando os algoritmos pode ser encontrado [neste link](https://drive.google.com/drive/folders/19RxmS9Z0M7JJ0cQoU_XLDASArwka2ASw?usp=sharing)
+
 #Um pouco de teoria
 
 Um robô manipulador tem como principais características:
