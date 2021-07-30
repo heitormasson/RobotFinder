@@ -69,7 +69,14 @@ E, por outro lado, podemos ter um robô com 3 juntas prismáticas (PPP):
 
 
 ## AG2
-Parte do Heitor
+* Otimiza um AG3 para determinado robô analisando
+* Entrada: objeto robô, parâmetros discretos do AG3 (tipo de seleção e tipo de crossover), ponto inicial e ponto final.
+* Indivíduo: Instância do AG3 com diferentes parâmetros contínuos (taxa de mutação, magnitude de mutação, número de indivíduos, decaimento exponencial e passo do decaimento)
+* Função objetivo: Recompensa o indivíduo com base na rapidez (do ponto de vista do número de iterações e do tempo por iteração) e com base na variância entre os pontos assumidos pelo manipulador robótico (quanto menor essa variância, maior a pontuação).
+* Seleção: Elitismo
+* Crossover: Média
+* Saída: Melhores parâmetros a serem utilizados pelo AG3 do Robô analisado.
+
 
 ## AG1
 * Utiliza o AG3 já otimizado pelo AG2
