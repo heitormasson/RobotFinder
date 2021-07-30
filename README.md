@@ -4,6 +4,12 @@ de parâmetros (de construção e de movimentação) para um robô manipulador d
 
 O vídeo final explicando os algoritmos pode ser encontrado [neste link](https://drive.google.com/drive/folders/19RxmS9Z0M7JJ0cQoU_XLDASArwka2ASw?usp=sharing)
 
+# Integrantes
+
+Henrique de Oliveira Caetano - henriquecaetano1@usp.br
+
+Heitor Amantini Masson - heitormasson@usp.br
+
 # Descrição dos arquivos
 * AG1.ipynb: Jupyter notebook testando e rodando o AG1 (e verificando sua convergência)
 * AGS.py: Código principal roda o AG2 para otimizar o AG3, e implementa o AG1 e o AG3 (para serem importados em outros projetos)
