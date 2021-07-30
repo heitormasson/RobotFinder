@@ -11,7 +11,7 @@ O vídeo final explicando os algoritmos pode ser encontrado [neste link](https:/
 * ag3_test.ipynb: Testar o ag3 para cada ponto da trajetória, utilizando o robô otimizado pelo AG1, bem como os parâmetros otimizados pelo AG2
 * tutorial_roboticstoolbox.ipynb: Breve tutorial a respeito da biblioteca utilizada neste projeto 
 
-#Um pouco de teoria
+# Um pouco de teoria
 
 Um robô manipulador tem como principais características:
 * Utilizado para manipular materiais sem contato direto do operador
